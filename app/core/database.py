@@ -11,15 +11,14 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 
-
 # ===== محرك الاتصال غير المتزامن =====
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,        # طباعة SQL في وضع التطوير
-    pool_pre_ping=True,          # يتحقق من الاتصال قبل كل استعلام
-    pool_recycle=3600,           # يعيد الاتصال كل ساعة (MySQL timeout)
-    pool_size=5,                 # 5 اتصالات جاهزة
-    max_overflow=10,             # يسمح بـ 10 إضافية عند الحاجة
+    echo=settings.DEBUG,
+    pool_pre_ping=False,  # 👈 التعديل هنا: جعلناها False لتجنب خطأ aiomysql
+    pool_recycle=3600,
+    pool_size=5,
+    max_overflow=10,
 )
 
 
@@ -27,7 +26,7 @@ engine = create_async_engine(
 AsyncSessionLocal = async_sessionmaker(
     engine,
     class_=AsyncSession,
-    expire_on_commit=False,      # مهم: يمنع مشاكل async
+    expire_on_commit=False,     # مهم: يمنع مشاكل async بعد الـ commit
     autoflush=False,
 )
 
@@ -49,10 +48,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     async with AsyncSessionLocal() as session:
         try:
+            # نعطي الجلسة للـ Route
             yield session
+            
+            # إذا انتهى الـ Route بنجاح، نحفظ التغييرات
             await session.commit()
-        except Exception:
+            
+        except Exception as e:
+            # إذا حدث أي خطأ (مثل رفض قاعدة البيانات لبيانات)،
+            # نلغي كل التغييرات المعلقة وننظف الجلسة
             await session.rollback()
-            raise
+            raise e  # نرفع الخطأ ليظهر في التيرمنال (مهم جداً لمعرفة السبب)
+            
         finally:
+            # دائماً نغلق الجلسة في النهاية
             await session.close()
