@@ -2,6 +2,7 @@
 إعدادات التطبيق — تُقرأ من ملف .env
 """
 from functools import lru_cache
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,22 +12,22 @@ class Settings(BaseSettings):
     # ===== App =====
     APP_NAME: str = "ShadowDev"
     APP_VERSION: str = "0.1.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # ===== Database =====
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_USER: str = "root"
-    DB_PASSWORD: str = ""
+    DB_PASSWORD: str = Field(..., min_length=1)
     DB_NAME: str = "shadowdev"
 
     # ===== Security =====
-    SECRET_KEY: str = "change_me"
+    SECRET_KEY: str = Field(..., min_length=32)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200  # 30 يوم
 
     # ===== CORS =====
-    CORS_ORIGINS: list[str] = ["*"]  # للتطوير فقط
+    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     # ===== Database URL (محسوبة تلقائياً) =====
     @property

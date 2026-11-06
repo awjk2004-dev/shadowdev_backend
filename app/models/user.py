@@ -32,6 +32,7 @@ class User(Base):
     task_logs: Mapped[list["TaskLog"]] = relationship(cascade="all, delete-orphan")
     user_skills: Mapped[list["UserSkill"]] = relationship(cascade="all, delete-orphan")
     weight_entries: Mapped[list["WeightEntry"]] = relationship(cascade="all, delete-orphan")
+
     # ===== دالة الطباعة =====
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username='{self.username}')>"

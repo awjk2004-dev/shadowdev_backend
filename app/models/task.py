@@ -12,14 +12,14 @@ class Task(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     
     title: Mapped[str] = mapped_column(String(150))
-    
-    # الأبعاد: religion, body, mind, work, self, relations
     dimension: Mapped[str] = mapped_column(String(50))
+    
+    # 👇 الحقل الجديد: نوع التكرار (يومية daily / لمرة واحدة once)
+    repeat_type: Mapped[str] = mapped_column(String(20), default="daily")
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    # علاقة بايثون
     logs: Mapped[list["TaskLog"]] = relationship(back_populates="task", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:

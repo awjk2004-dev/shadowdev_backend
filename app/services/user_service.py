@@ -10,22 +10,15 @@ from app.models.user_skill import UserSkill
 from app.models.task import Task
 from app.schemas.user import UserCreate
 from app.core.security import get_password_hash
+from app.core.security import verify_password
 
 # ==========================================
-# المهام الافتراضية لكل مستخدم جديد
+# المهام الافتراضية الترحيبية (محايدة لأي مستخدم)
 # ==========================================
 DEFAULT_TASKS = [
-    {"title": "الصلاة في وقتها", "dimension": "religion"},
-    {"title": "ورد القرآن", "dimension": "religion"},
-    {"title": "الأذكار", "dimension": "religion"},
-    {"title": "تمرين مقاومة", "dimension": "body"},
-    {"title": "نوم 7 ساعات", "dimension": "body"},
-    {"title": "قراءة 20 دقيقة", "dimension": "mind"},
-    {"title": "درس برمجة", "dimension": "mind"},
-    {"title": "عمل على المشروع", "dimension": "work"},
-    {"title": "التقديم على فرصة", "dimension": "work"},
-    {"title": "قلة الهاتف", "dimension": "self"},
-    {"title": "تواصل مع قريب", "dimension": "relations"},
+    {"title": "قراءة 10 صفحات من كتاب", "dimension": "mind", "repeat_type": "daily"},
+    {"title": "ممارسة الرياضة لمدة 15 دقيقة", "dimension": "body", "repeat_type": "daily"},
+    {"title": "تحديد هدف اليوم", "dimension": "self", "repeat_type": "daily"},
 ]
 
 
@@ -68,9 +61,9 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         xp=0,
         level=1,
         rank="E",
-        start_weight=43.00,
-        target_weight=50.00,
-        current_weight=43.00
+        start_weight=0,
+        target_weight=0,
+        current_weight=0
     )
     new_streak = Streak(
         user_id=new_user.id,
@@ -82,12 +75,13 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     db.add(new_player)
     db.add(new_streak)
 
-    # 6. نسخ المهام الافتراضية للمستخدم
+        # 6. نسخ المهام الافتراضية للمستخدم
     for task_data in DEFAULT_TASKS:
         new_task = Task(
             user_id=new_user.id,
             title=task_data["title"],
-            dimension=task_data["dimension"]
+            dimension=task_data["dimension"],
+            repeat_type=task_data.get("repeat_type", "daily") # 👈 إضافة نوع التكرار
         )
         db.add(new_task)
 
@@ -109,3 +103,15 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     await db.refresh(new_user)
     
     return new_user
+
+async def authenticate_user(db: AsyncSession, username: str, password: str) -> User | None:
+    """التحقق من صحة اسم المستخدم وكلمة المرور"""
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalars().first()
+    
+    if not user:
+        return None
+    if not verify_password(password, user.hashed_password):
+        return None
+        
+    return user
