@@ -1,5 +1,5 @@
 """
-اتصال MySQL غير المتزامن + Session Management
+اتصال PostgreSQL غير المتزامن + Session Management
 """
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import (
@@ -15,10 +15,7 @@ from app.core.config import settings
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
-    pool_pre_ping=False,  # 👈 التعديل هنا: جعلناها False لتجنب خطأ aiomysql
-    pool_recycle=3600,
-    pool_size=5,
-    max_overflow=10,
+    pool_pre_ping=True,
 )
 
 

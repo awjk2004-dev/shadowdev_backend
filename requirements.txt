@@ -5,7 +5,7 @@ python-multipart==0.0.20
 
 # ===== Database =====
 sqlalchemy==2.0.36
-aiomysql==0.2.0
+psycopg[binary,pool]==3.2.3
 alembic==1.14.0
 cryptography==44.0.0
 

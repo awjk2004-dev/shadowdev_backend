@@ -9,13 +9,14 @@ from alembic import context
 
 from app.core.config import settings
 from app.core.database import Base
-from app.models import User  # مهم جداً عشان Alembic يتعرف على الجدول
+import app.models  # noqa: F401  # تسجيل كل الموديلات لدى Alembic
 
 # هذا هو كائن Alembic Config
 config = context.config
 
 # تعديل رابط قاعدة البيانات ليكون من ملف .env الخاص بنا
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# الـ %% ضرورية حتى لا يفسر ConfigParser علامة النسبة المئوية في كلمة المرور
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 # تفسير ملف التكوين للتسجيل
 if config.config_file_name is not None:

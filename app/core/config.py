@@ -1,9 +1,12 @@
 """
 إعدادات التطبيق — تُقرأ من ملف .env
 """
+import logging
 from functools import lru_cache
-from pydantic import Field
+from pydantic import Field, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -14,12 +17,8 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
 
-    # ===== Database =====
-    DB_HOST: str = "localhost"
-    DB_PORT: int = 3306
-    DB_USER: str = "root"
-    DB_PASSWORD: str = Field(..., min_length=1)
-    DB_NAME: str = "shadowdev"
+    # ===== Database (PostgreSQL) =====
+    DATABASE_URL: str = Field(..., description="رابط اتصال PostgreSQL غير المتزامن")
 
     # ===== Security =====
     SECRET_KEY: str = Field(..., min_length=32)
@@ -29,14 +28,32 @@ class Settings(BaseSettings):
     # ===== CORS =====
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
-    # ===== Database URL (محسوبة تلقائياً) =====
-    @property
-    def DATABASE_URL(self) -> str:
-        """رابط اتصال MySQL غير المتزامن"""
-        return (
-            f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}"
-            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
-        )
+    # ===== Database URL =====
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        """إزالة أي إضافات قديمة خاصة بـ MySQL والتأكد من استخدام psycopg."""
+        if not isinstance(value, str):
+            return value
+
+        value = value.strip()
+
+        if not value:
+            logger.warning(
+                "DATABASE_URL is empty or not found in .env — database connection will fail."
+            )
+            return value
+
+        value = value.replace("?charset=utf8mb4", "")
+
+        if value.startswith("postgres://"):
+            value = "postgresql+psycopg://" + value[len("postgres://"):]
+        elif value.startswith("postgresql://"):
+            value = "postgresql+psycopg://" + value[len("postgresql://"):]
+        elif value.startswith("postgresql+asyncpg://"):
+            value = "postgresql+psycopg://" + value[len("postgresql+asyncpg://"):]
+
+        return value
 
     # ===== Pydantic Settings Config =====
     model_config = SettingsConfigDict(
@@ -53,8 +70,18 @@ def get_settings() -> Settings:
     إرجاع نسخة واحدة من الإعدادات (Singleton)
     lru_cache يضمن أننا نقرأ .env مرة واحدة فقط
     """
-    return Settings()
-
-
+    try:
+        return Settings()
+    except ValidationError as exc:
+        missing = [
+            error["loc"][0]
+            for error in exc.errors()
+            if error.get("type") == "missing"
+        ]
+        if "DATABASE_URL" in missing:
+            logger.warning(
+                "DATABASE_URL is not found in .env — database connection will fail."
+            )
+        raise
 # نسخة جاهزة للاستخدام في كل المشروع
 settings = get_settings()
