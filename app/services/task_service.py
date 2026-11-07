@@ -32,8 +32,8 @@ async def complete_task(db: AsyncSession, task_id: int, user_id: int):
     if log_result.scalars().first():
         raise HTTPException(status_code=400, detail="لقد أكملت هذه المهمة بالفعل اليوم")
 
-    # 3. حفظ سجل الإكمال (+10 XP)
-    xp_earned = 10
+    # 3. منح XP حسب صعوبة المهمة
+    xp_earned = task.xp_reward
     new_log = TaskLog(
         task_id=task.id,
         user_id=user_id,

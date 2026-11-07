@@ -3,7 +3,8 @@
 """
 import logging
 from functools import lru_cache
-from pydantic import Field, ValidationError, field_validator
+from typing import Literal
+from pydantic import Field, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "ShadowDev"
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
+    ENVIRONMENT: Literal["development", "staging", "production"] = "development"
 
     # ===== Database (PostgreSQL) =====
     DATABASE_URL: str = Field(..., description="رابط اتصال PostgreSQL غير المتزامن")
@@ -24,9 +26,33 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field(..., min_length=32)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200  # 30 يوم
+    API_RATE_LIMIT_REQUESTS: int = Field(default=120, gt=0)
+    API_RATE_LIMIT_WINDOW_SECONDS: int = Field(default=60, gt=0)
+    LOGIN_FAILURE_LIMIT: int = Field(default=5, gt=0)
+    LOGIN_LOCKOUT_SECONDS: int = Field(default=900, gt=0)
 
     # ===== CORS =====
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+
+    @model_validator(mode="after")
+    def validate_production_settings(self) -> "Settings":
+        if self.ENVIRONMENT == "production":
+            if self.DEBUG:
+                raise ValueError("DEBUG must be disabled in production")
+            if self.SECRET_KEY.lower() in {
+                "your_secret_key_here",
+                "changeme",
+                "change-me",
+            }:
+                raise ValueError("SECRET_KEY must be replaced in production")
+            if any(
+                origin == "*" or not origin.startswith("https://")
+                for origin in self.CORS_ORIGINS
+            ):
+                raise ValueError(
+                    "Production CORS_ORIGINS must contain only explicit HTTPS origins"
+                )
+        return self
 
     # ===== Database URL =====
     @field_validator("DATABASE_URL", mode="before")

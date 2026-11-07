@@ -3,21 +3,26 @@ from datetime import datetime, date
 from typing import Literal, Optional
 
 TaskDimension = Literal["mind", "body", "work", "self", "relations"]
+TaskDifficulty = Literal["easy", "medium", "hard"]
 
 class TaskCreate(BaseModel):
     title: str
     dimension: TaskDimension
     repeat_type: str = "daily"
+    difficulty: TaskDifficulty = "easy"
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     dimension: Optional[TaskDimension] = None
     repeat_type: Optional[str] = None
+    difficulty: Optional[TaskDifficulty] = None
     
 class TaskResponse(BaseModel):
     id: int
     title: str
     dimension: str
+    difficulty: TaskDifficulty
+    xp_reward: int
     is_active: bool
     created_at: datetime
 

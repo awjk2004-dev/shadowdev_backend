@@ -13,6 +13,7 @@ class Task(Base):
     
     title: Mapped[str] = mapped_column(String(150))
     dimension: Mapped[str] = mapped_column(String(50))
+    difficulty: Mapped[str] = mapped_column(String(10), default="easy")
     
     # 👇 الحقل الجديد: نوع التكرار (يومية daily / لمرة واحدة once)
     repeat_type: Mapped[str] = mapped_column(String(20), default="daily")
@@ -21,6 +22,10 @@ class Task(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     logs: Mapped[list["TaskLog"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+
+    @property
+    def xp_reward(self) -> int:
+        return {"easy": 10, "medium": 25, "hard": 50}[self.difficulty]
 
     def __repr__(self) -> str:
         return f"<Task(id={self.id}, title='{self.title}')>"

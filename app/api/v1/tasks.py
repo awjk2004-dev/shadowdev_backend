@@ -32,7 +32,8 @@ async def create_task(
         user_id=current_user.id,
         title=task_in.title,
         dimension=task_in.dimension,
-        repeat_type=task_in.repeat_type
+        repeat_type=task_in.repeat_type,
+        difficulty=task_in.difficulty,
     )
     db.add(new_task)
     await db.commit()
@@ -55,6 +56,7 @@ async def update_task(
     if task_in.title: task.title = task_in.title
     if task_in.dimension: task.dimension = task_in.dimension
     if task_in.repeat_type: task.repeat_type = task_in.repeat_type
+    if task_in.difficulty is not None: task.difficulty = task_in.difficulty
     
     await db.commit()
     await db.refresh(task)
