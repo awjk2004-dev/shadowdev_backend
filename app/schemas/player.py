@@ -7,6 +7,8 @@ class PlayerResponse(BaseModel):
     xp: int
     level: int
     rank: str
+    xp_to_next_level: int # كم XP يلزم للوصول للمستوى التالي
+    skill_points: int
     start_weight: Decimal
     target_weight: Decimal
     current_weight: Decimal

@@ -61,6 +61,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         xp=0,
         level=1,
         rank="E",
+        skill_points=10,
         start_weight=0,
         target_weight=0,
         current_weight=0
@@ -85,8 +86,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         )
         db.add(new_task)
 
-    # 7. نسخ المهارات (من جدول skills إلى user_skills)
-    # نقرأ كل المهارات الـ 12 من قاعدة البيانات
+    # 7. نسخ كتالوج المهارات إلى سجل المستخدم
     skills_result = await db.execute(select(Skill))
     all_skills = skills_result.scalars().all()
     
@@ -94,7 +94,8 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         new_user_skill = UserSkill(
             user_id=new_user.id,
             skill_id=skill.id,
-            status="beginner"
+            status="beginner",
+            is_unlocked=False,
         )
         db.add(new_user_skill)
 

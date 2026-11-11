@@ -24,6 +24,7 @@ class TaskResponse(BaseModel):
     difficulty: TaskDifficulty
     xp_reward: int
     is_active: bool
+    is_completed: bool = False # هل أكملت المهمة اليوم؟
     created_at: datetime
 
     class Config:
@@ -44,4 +45,5 @@ class TaskCompleteResponse(BaseModel):
     total_xp: int
     current_level: int
     rank: str
+    xp_to_next_level: int # كم XP يلزم للوصول للمستوى التالي
     is_day_complete: bool # هل أكمل كل مهام اليوم؟

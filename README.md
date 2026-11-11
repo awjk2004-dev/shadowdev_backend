@@ -72,7 +72,7 @@ All versioned endpoints use the `/api/v1` prefix.
 | Current user | `GET /api/v1/auth/me`, `PUT /api/v1/auth/me` |
 | Tasks | `/api/v1/tasks` |
 | Player | `/api/v1/player` |
-| Skills | `/api/v1/skills` |
+| Skills | `GET /api/v1/skills/me`, `POST /api/v1/skills/me/{skill_id}/unlock`, `POST /api/v1/skills/me/reset` |
 | Weight | `/api/v1/weight` |
 | Statistics | `/api/v1/stats` |
 
@@ -83,6 +83,20 @@ characters, including uppercase and lowercase letters, a number, and a symbol.
 
 User data is scoped to the authenticated user. The API does not currently define
 administrator roles or an admin interface.
+
+### Skill tree and skill points
+
+The skill-tree migration seeds the canonical tree and adds persistent unlock
+state and player skill points. Players start with 10 SP; each newly reached
+level grants one additional SP. Unlock requests validate prerequisites and
+costs on the server. Resetting the tree locks all its skills and restores the
+player's full earned SP balance (`10 + level - 1`). Existing players are
+backfilled from their current XP-derived level.
+
+The mobile app uses `GET /api/v1/skills/me` to load the tree and
+`POST /api/v1/skills/me/{skill_id}/unlock` to unlock a skill. The legacy
+`PATCH /api/v1/skills/me/{skill_id}` status-progression endpoint remains
+available. Run `alembic upgrade head` before deploying the client changes.
 
 ## Configuration
 

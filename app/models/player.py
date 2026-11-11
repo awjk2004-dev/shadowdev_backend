@@ -30,9 +30,18 @@ def calculate_rank(level: int) -> str:
 
 
 def sync_player_progress(player: Player) -> None:
-    """إعادة حساب المستوى والرتبة من إجمالي XP."""
-    player.level = calculate_level(player.xp)
+    """إعادة حساب المستوى والرتبة ومنح SP عند بلوغ مستوى جديد."""
+    new_level = calculate_level(player.xp)
+    levels_gained = max(0, new_level - player.level)
+    if levels_gained:
+        player.skill_points = (player.skill_points or 10) + levels_gained
+    player.level = new_level
     player.rank = calculate_rank(player.level)
+
+
+def xp_to_next_level(xp: int, level: int) -> int:
+    """كم XP يلزم للوصول إلى المستوى التالي (الحد التالي: 100 * level²)."""
+    return max(0, 100 * (level ** 2) - xp)
 
 
 class Player(Base):
@@ -47,6 +56,9 @@ class Player(Base):
     xp: Mapped[int] = mapped_column(Integer, default=0)
     level: Mapped[int] = mapped_column(Integer, default=1)
     rank: Mapped[str] = mapped_column(String(1), default="E")
+    skill_points: Mapped[int] = mapped_column(
+        Integer, default=10, server_default="10", nullable=False
+    )
     
     # إحصائيات الوزن والطول
     start_weight: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
@@ -61,3 +73,7 @@ class Player(Base):
 
     def __repr__(self) -> str:
         return f"<Player(user_id={self.user_id}, level={self.level}, rank='{self.rank}')>"
+
+    @property
+    def xp_to_next_level(self) -> int:
+        return xp_to_next_level(self.xp, self.level)

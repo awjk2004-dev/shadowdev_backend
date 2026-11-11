@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List
+from datetime import date
 
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.task import Task
+from app.models.task_log import TaskLog
 from app.schemas.task import TaskResponse, TaskCompleteResponse, TaskCreate, TaskUpdate
 from app.services import task_service
 
@@ -17,9 +19,24 @@ async def get_my_tasks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """جلب كل مهام المستخدم الحالي"""
+    """جلب كل مهام المستخدم الحالي مع حالة الإكمال لهذا اليوم"""
     result = await db.execute(select(Task).where(Task.user_id == current_user.id, Task.is_active == True))
-    return result.scalars().all()
+    tasks = result.scalars().all()
+
+    log_result = await db.execute(
+        select(TaskLog.task_id).where(
+            TaskLog.user_id == current_user.id,
+            TaskLog.completed_date == date.today()
+        )
+    )
+    completed_ids = set(log_result.scalars().all())
+
+    responses = []
+    for task in tasks:
+        response = TaskResponse.model_validate(task)
+        response.is_completed = task.id in completed_ids
+        responses.append(response)
+    return responses
 
 @router.post("", response_model=TaskResponse, status_code=201)
 async def create_task(

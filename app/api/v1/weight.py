@@ -20,7 +20,11 @@ async def record_weight(
 ):
     """تسجيل وزن جديد وإعطاء XP لكل 0.5 كجم زيادة"""
     # 1. جلب بيانات اللاعب
-    player_result = await db.execute(select(Player).where(Player.user_id == current_user.id))
+    player_result = await db.execute(
+        select(Player)
+        .where(Player.user_id == current_user.id)
+        .with_for_update()
+    )
     player = player_result.scalars().first()
     
     # 2. حساب الفرق

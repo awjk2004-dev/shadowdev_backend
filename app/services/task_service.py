@@ -42,8 +42,10 @@ async def complete_task(db: AsyncSession, task_id: int, user_id: int):
     )
     db.add(new_log)
 
-    # 4. تحديث اللاعب (+10 XP)
-    player_result = await db.execute(select(Player).where(Player.user_id == user_id))
+    # 4. تحديث اللاعب (+XP مكافأة المهمة) وإعادة حساب المستوى/الرتبة
+    player_result = await db.execute(
+        select(Player).where(Player.user_id == user_id).with_for_update()
+    )
     player = player_result.scalars().first()
     
     player.xp += xp_earned
@@ -142,5 +144,6 @@ async def complete_task(db: AsyncSession, task_id: int, user_id: int):
         "total_xp": player.xp,
         "current_level": player.level,
         "rank": player.rank,
+        "xp_to_next_level": player.xp_to_next_level,
         "is_day_complete": is_day_complete
     }

@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Boolean, String, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -12,6 +12,9 @@ class UserSkill(Base):
     
     # status: 'beginner', 'practitioner', 'warrior'
     status: Mapped[str] = mapped_column(String(20), default="beginner")
+    is_unlocked: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

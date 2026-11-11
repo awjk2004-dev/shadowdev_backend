@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from decimal import Decimal
+from datetime import date
 from pydantic import BaseModel
 
 from app.core.database import get_db
@@ -9,6 +11,8 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.player import Player, sync_player_progress
 from app.models.streak import Streak 
+from app.models.task import Task
+from app.models.task_log import TaskLog
 from app.schemas.player import PlayerResponse
 
 router = APIRouter()
@@ -28,15 +32,19 @@ async def get_my_player(
     current_user: User = Depends(get_current_user)
 ):
     """جلب بيانات اللاعب الحالي"""
-    result = await db.execute(select(Player).where(Player.user_id == current_user.id))
+    result = await db.execute(
+        select(Player)
+        .where(Player.user_id == current_user.id)
+        .with_for_update()
+    )
     player = result.scalars().first()
     
     if not player:
         raise HTTPException(status_code=404, detail="لم يتم العثور على بيانات اللاعب")
 
-    previous_progress = (player.level, player.rank)
+    previous_progress = (player.level, player.rank, player.skill_points)
     sync_player_progress(player)
-    if (player.level, player.rank) != previous_progress:
+    if (player.level, player.rank, player.skill_points) != previous_progress:
         await db.commit()
 
     return player
@@ -52,10 +60,26 @@ async def get_my_streak(
     if not streak:
         raise HTTPException(status_code=404, detail="لا يوجد سجل سلسلة")
     
+    # كم مهمة نشطة لديه اليوم؟ وكم أكمل منها؟
+    total_tasks_result = await db.execute(
+        select(func.count(Task.id)).where(Task.user_id == current_user.id, Task.is_active == True)
+    )
+    tasks_total = total_tasks_result.scalar() or 0
+
+    completed_tasks_result = await db.execute(
+        select(func.count(TaskLog.id)).where(
+            TaskLog.user_id == current_user.id,
+            TaskLog.completed_date == date.today()
+        )
+    )
+    tasks_completed = completed_tasks_result.scalar() or 0
+
     return {
         "current_streak": streak.current_streak,
         "best_streak": streak.best_streak,
-        "freeze_count": streak.freeze_count
+        "freeze_count": streak.freeze_count,
+        "tasks_completed": tasks_completed,
+        "tasks_total": tasks_total
     }
 
 @router.put("/height")
@@ -110,8 +134,8 @@ async def get_bmi(
     if not player or not player.height:
         return {"message": "الرجاء إدخال الطول أولاً لحساب مؤشر كتلة الجسم"}
 
-    # حساب الـ BMI
-    height_m = float(player.height)
+    # حساب الـ BMI (الطول مخزّن بالسنتيمتر، نحوله إلى متر)
+    height_m = float(player.height) / 100
     weight = float(player.current_weight)
     
     if height_m <= 0:
@@ -123,10 +147,10 @@ async def get_bmi(
     if bmi < 18.5:
         category = "نحيف"
         advice = "أنت بحاجة إلى زيادة وزنك، ركز على التغذية والتمارين."
-    elif 18.5 <= bmi < 24.9:
+    elif bmi < 25:
         category = "وزن طبيعي"
         advice = "ممتاز! حافظ على وزنك ونمط حياتك الصحي."
-    elif 25 <= bmi < 29.9:
+    elif bmi < 30:
         category = "زيادة في الوزن"
         advice = "انتبه لوزنك، قد تحتاج لتقليل السعرات وزيادة النشاط."
     else:
